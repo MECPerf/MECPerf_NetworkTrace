@@ -11,7 +11,6 @@ config.read("conf.ini")
 network_trace1 = NetworkTraceManager(config["conf1"])
 network_trace2 = NetworkTraceManager(config["conf2"])
 
-
 print(network_trace1.get_delay())
 print(network_trace1.get_delay())
 print(network_trace1.get_delay())

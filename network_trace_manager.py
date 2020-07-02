@@ -12,8 +12,6 @@ logging.basicConfig(filename="file.log", filemode='a',
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s', datefmt='%H:%M:%S', 
                     level=logging.DEBUG)
 
-logging.info("Running Urban Planning") # [CC] ??
-
 datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 
 class NetworkTraceManager:
@@ -162,7 +160,7 @@ class NetworkTraceManager:
         def select_trace_file(self, typeof_measure):
                 print("select_trace_file("+ typeof_measure +"):  TODO")
                 
-                return "prova.txt"
+                return "test/test_vector.txt"
 
         def compute_randomtimes(self, tracefile):
                 if self.instanceconfiguration.get("t_start") != None:
