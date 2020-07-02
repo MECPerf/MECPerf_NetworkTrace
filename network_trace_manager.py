@@ -1,15 +1,18 @@
+#!/usr/bin/env python3
+
 import configparser
 import random
 import datetime
 import logging
 
+# [CC] perche' OK e WRONG_CONFIGURATION sono variabili globali
 OK = 0
 WRONG_CONFIGURATION = 1
 logging.basicConfig(filename="file.log", filemode='a', 
                     format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s', datefmt='%H:%M:%S', 
                     level=logging.DEBUG)
 
-logging.info("Running Urban Planning")
+logging.info("Running Urban Planning") # [CC] ??
 
 datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 
@@ -33,7 +36,6 @@ class NetworkTraceManager:
 
                 logging.info("delay: " + str(self.delay_trace))
                 logging.info("bandwidth: " + str(self.bandwidth_trace))
-
                 
         def get_delay(self):
                 if self.status != OK:
@@ -51,7 +53,8 @@ class NetworkTraceManager:
                 bandwidth = self.bandwidth_trace[self.bandwidth_index]["bandwidth"]
                 self.bandwidth_index = (self.bandwidth_index + 1) % len(self.bandwidth_trace) 
 
-                return bandwidth 
+                return bandwidth
+
         def get_networkvalues(self):
                 if self.status != OK:
                         return self.status
@@ -61,34 +64,32 @@ class NetworkTraceManager:
 
                 return delay, bandwidth
 
-
         def check_instanceconfiguration(self):
                 if self.instanceconfiguration.getint("seed") == None:
                         if self.instanceconfiguration.get("t_start") == None:
-                                print ("Error: seed and t_start values are both missing")
+                                print("Error: seed and t_start values are both missing")
                                 self.status = WRONG_CONFIGURATION
 
                         if self.instanceconfiguration.get("t_start") != None and \
                            self.instanceconfiguration.get("t_end") == None:
-                                print ("t_end is missing (?)")
+                                print("t_end is missing (?)")
                                 #self.status = ?
                         
                 if self.instanceconfiguration.get("t_start") != None and \
                    self.instanceconfiguration.get("t_end") != None and \
                    datetime.datetime.strptime(self.instanceconfiguration.get("t_start"), datetime_format) > \
                    datetime.datetime.strptime(self.instanceconfiguration.get("t_end"), datetime_format):
-                        print ("Error: t_start is greater than t_end")
+                        print("Error: t_start is greater than t_end")
                         self.status = WRONG_CONFIGURATION
+
         def print_instanceconfiguration(self):
                 if self.status != OK:
                         return self.status
                 
-                
                 logging.info("\n")
-                logging.info ("NetworkTraceManager instance configuration: ")
+                logging.info("NetworkTraceManager instance configuration: ")
                 for key in self.instanceconfiguration:
                         logging.info ("\t" + key + " = " + self.instanceconfiguration.get(key))
-
 
         def get_traces(self):
                 if self.status != OK:
@@ -158,12 +159,10 @@ class NetworkTraceManager:
 
                                 self.bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data})
 
-
         def select_trace_file(self, typeof_measure):
-                print ("select_trace_file("+ typeof_measure +"):  TODO")
+                print("select_trace_file("+ typeof_measure +"):  TODO")
                 
                 return "prova.txt"
-
 
         def compute_randomtimes(self, tracefile):
                 if self.instanceconfiguration.get("t_start") != None:
@@ -174,12 +173,12 @@ class NetworkTraceManager:
                         logging.info ("t_start: " + str(t_start) + "\t\t(from configuration)")
                         logging.info ("t_end: " + str(t_end) + "\t\t(from configuration)")
                                 
-                        print "TODO: E se viene passato solo t_start?"
+                        print("TODO: E se viene passato solo t_start?")
 
                         return t_start, t_end
                 
                 #t_start & t_end are selected randomly
-                with open (tracefile, "r") as input_tracefile:
+                with open(tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  
                         first_timestamp = data_list[0].split("_")[0].strip()
                         last_timestamp = data_list[-1].split("_")[0].strip()
@@ -201,24 +200,3 @@ class NetworkTraceManager:
                         logging.info ("t_end: " + str(random_tend) + "\t\t(randomly generated)")
                         
                         return random_tstart, random_tend
-
-                                
-
-
-                                
-
-                
-                                
-
-
-                
-
- 
-        
-                                
-
-
-
-
-
-

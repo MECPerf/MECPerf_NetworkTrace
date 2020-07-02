@@ -1,6 +1,9 @@
+#!/usr/bin/env python3
+
 import configparser
-from network_trace_manager import NetworkTraceManager 
 import copy
+
+from network_trace_manager import NetworkTraceManager 
 
 config = configparser.ConfigParser()
 config.read("conf.ini")
@@ -10,37 +13,37 @@ network_trace2 = NetworkTraceManager(config["conf2"])
 
 
 print(network_trace1.get_delay())
-print (network_trace1.get_delay())
-print (network_trace1.get_delay())
-print (network_trace1.get_delay())
-print "\n"
+print(network_trace1.get_delay())
+print(network_trace1.get_delay())
+print(network_trace1.get_delay())
+print("\n")
     
 
-print (network_trace2.get_delay())
-print (network_trace2.get_delay())
-print (network_trace2.get_delay())
-print (network_trace2.get_delay())
-print "\n"
+print(network_trace2.get_delay())
+print(network_trace2.get_delay())
+print(network_trace2.get_delay())
+print(network_trace2.get_delay())
+print("\n")
 
-print (network_trace1.get_bandwidth())
-print (network_trace1.get_bandwidth())
-print (network_trace1.get_bandwidth())
-print (network_trace1.get_bandwidth())
-print "\n"
+print(network_trace1.get_bandwidth())
+print(network_trace1.get_bandwidth())
+print(network_trace1.get_bandwidth())
+print(network_trace1.get_bandwidth())
+print("\n")
 
-print (network_trace2.get_bandwidth())
-print (network_trace2.get_bandwidth())
-print (network_trace2.get_bandwidth())
-print (network_trace2.get_bandwidth())
-print (network_trace2.get_bandwidth())
-print "\n"
+print(network_trace2.get_bandwidth())
+print(network_trace2.get_bandwidth())
+print(network_trace2.get_bandwidth())
+print(network_trace2.get_bandwidth())
+print(network_trace2.get_bandwidth())
+print("\n")
 
 for i in range(0,4):
     delay, bandwidth = network_trace1.get_networkvalues()
-    print (str(delay) + ", " + str(bandwidth))
-print "\n"
+    print(str(delay) + ", " + str(bandwidth))
+print("\n")
 
 
 for i in range(0,4):
     delay, bandwidth = network_trace2.get_networkvalues()
-    print (str(delay) + ", " + str(bandwidth))
+    print(str(delay) + ", " + str(bandwidth))
