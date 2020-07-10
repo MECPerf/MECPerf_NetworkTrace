@@ -165,8 +165,7 @@ class NetworkTraceManager:
                            self.instanceconfiguration.get("trace") == None:
                                 print("Error: Wrong configuration")
                                 self.status = self.__WRONG_CONFIGURATION
-                                return
-                        
+                                return                
         def print_instanceconfiguration(self):
                 if self.status != self.__OK:
                         return self.status
@@ -175,6 +174,28 @@ class NetworkTraceManager:
                 logging.info("NetworkTraceManager instance configuration: ")
                 for key in self.instanceconfiguration:
                         logging.info ("\t" + key + " = " + self.instanceconfiguration.get(key))
+
+
+        def compact_traces(self, tracelist):
+                print("\n\n\n\n")
+                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+                logging.info(max_tracegap)
+
+                previous_time = tracelist[0]["timestamp"]                
+                for elem in tracelist:
+                        actual_timestamp = elem["timestamp"]
+                        diff_seconds = (actual_timestamp - previous_time).total_seconds()
+                        
+                        if diff_seconds > 30:
+                                
+                                actual_timestamp =previous_time
+                                actual_timestamp += datetime.timedelta(seconds=max_tracegap)
+                                elem["timestamp"] = actual_timestamp
+                        
+                        print(str(actual_timestamp) + "-" + str(previous_time) + " = " + str((actual_timestamp - previous_time).total_seconds()))
+                        
+                        previous_time = actual_timestamp
+                        
 
 
         def get_traces(self):
@@ -218,7 +239,7 @@ class NetworkTraceManager:
                                 if len(self.rtt_trace) >= minimum_tracelen and max_timestamp > t_end:
                                         break
 
-                                self.rtt_trace.append({"timestamp": trace_timestamp, "rtt": trace_data})   
+                                self.rtt_trace.append({"timestamp": trace_timestamp, "rtt": trace_data, "absolute_timestamp": trace_timestamp})   
                 #read the bandwidth values
                 with open (bandwidth_tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  
@@ -247,8 +268,12 @@ class NetworkTraceManager:
                                 if len(self.bandwidth_trace) >= minimum_tracelen and max_timestamp > t_end:                                        
                                         break
 
-                                self.bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data})
+                                self.bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data, "absolute_timestamp": trace_timestamp})
 
+                self.compact_traces(self.rtt_trace)
+                self.compact_traces(self.bandwidth_trace)
+
+        
 
         def select_trace_file(self, m):
                 typeofmeasure = self.instanceconfiguration.get("typeofmeasure").strip()
@@ -278,7 +303,6 @@ class NetworkTraceManager:
                                         break 
                                 if key == "ObserverPos" and observerPos != elem[key]:
                                         path = None
-                                        print (elem[key])
                                         break
                                 if key == "noise" and cross_traffic != elem[key]:
                                         path = None
