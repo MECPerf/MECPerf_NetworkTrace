@@ -8,8 +8,8 @@ import json
 
 
 logging.basicConfig(filename="file.log", filemode='w', 
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s', datefmt='%H:%M:%S', 
-                    level=logging.DEBUG)
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(funcName)s(): %(message)s', 
+                    datefmt='%H:%M:%S', level=logging.DEBUG)
 
 datetime_format = "%Y-%m-%d %H:%M:%S.%f"
 
@@ -176,25 +176,26 @@ class NetworkTraceManager:
                         logging.info ("\t" + key + " = " + self.instanceconfiguration.get(key))
 
 
-        def compact_traces(self, tracelist):
-                print("\n\n\n\n")
+        def compact_trace(self, tracelist):
                 max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
-                logging.info(max_tracegap)
+                logging.info("\tmax_tracegap=" + str(max_tracegap))
+                logging.info("\t" + str(tracelist))
 
                 previous_time = tracelist[0]["timestamp"]                
-                for elem in tracelist:
-                        actual_timestamp = elem["timestamp"]
-                        diff_seconds = (actual_timestamp - previous_time).total_seconds()
+                for i in range(0, len(tracelist)):
+                        diff_seconds = (tracelist[i]["timestamp"] - previous_time).total_seconds()
                         
-                        if diff_seconds > 30:
-                                
-                                actual_timestamp =previous_time
-                                actual_timestamp += datetime.timedelta(seconds=max_tracegap)
-                                elem["timestamp"] = actual_timestamp
+                        if diff_seconds > max_tracegap:
+                                diff_seconds -= max_tracegap                                
+
+                                for j in range(i, len(tracelist)):
+                                        tracelist[j]["timestamp"] = tracelist[j]["timestamp"] \
+                                                                    - datetime.timedelta(seconds=diff_seconds)
                         
-                        print(str(actual_timestamp) + "-" + str(previous_time) + " = " + str((actual_timestamp - previous_time).total_seconds()))
+                        logging.info(str(tracelist[i]["timestamp"]) + "-" + str(previous_time) + " = " + 
+                                     str((tracelist[i]["timestamp"] - previous_time).total_seconds()))
                         
-                        previous_time = actual_timestamp
+                        previous_time = tracelist[i]["timestamp"]
                         
 
 
@@ -270,8 +271,8 @@ class NetworkTraceManager:
 
                                 self.bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data, "absolute_timestamp": trace_timestamp})
 
-                self.compact_traces(self.rtt_trace)
-                self.compact_traces(self.bandwidth_trace)
+                self.compact_trace(self.rtt_trace)
+                self.compact_trace(self.bandwidth_trace)
 
         
 
