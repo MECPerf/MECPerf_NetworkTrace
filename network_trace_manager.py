@@ -101,8 +101,10 @@ class NetworkTraceManager:
                 self.status = self.__OK
                 self.rtt_trace = []
                 self.rtt_index = 0
+                self.rtt_timestamp = None
                 self.bandwidth_trace = []
-                self.bandwidth_index = 0                
+                self.bandwidth_index = 0    
+                self.bandwidth_timestamp = None            
                 self.instanceconfiguration = config
 
                 self.check_instanceconfiguration()
@@ -112,34 +114,109 @@ class NetworkTraceManager:
                 random.seed(self.instanceconfiguration.getint("seed"))
 
                 self.get_traces()
+                self.rtt_timestamp = self.rtt_trace[0]["timestamp"]
+                self.bandwidth_timestamp = self.bandwidth_trace[0]["timestamp"]
 
                 logging.info("rtt: " + str(self.rtt_trace))
+                logging.info("rtt_timestamp: " + str(self.rtt_timestamp))
                 logging.info("bandwidth: " + str(self.bandwidth_trace))
+                logging.info("bandwidth_timestamp: " + str(self.bandwidth_timestamp))
                 
 
-        def get_rtt(self):
+        def get_rtt(self, sec):
                 if self.status != self.__OK:
                         return self.status
+ 
+                while (True):
+                        next_index = (self.rtt_index + 1) % len(self.rtt_trace)
+                        if next_index != 0:
+                                next_timestamp = self.rtt_trace[self.rtt_index + 1]["timestamp"]
+                        else:
+                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self.rtt_trace[-1]["timestamp"] + \
+                                                 datetime.timedelta(seconds=max_tracegap)
+
+
+                        if self.rtt_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
+                                self.rtt_index = next_index
+
+                                if next_index == 0:
+                                        diff_seconds = (self.rtt_trace[-1]["timestamp"] -
+                                                        self.rtt_trace[0]["timestamp"]  + 
+                                                        datetime.timedelta(seconds=max_tracegap)).total_seconds()
+                                        for elem in self.rtt_trace:
+                                                elem["timestamp"] = elem["timestamp"] + \
+                                                                    datetime.timedelta(seconds=diff_seconds)
+
+                                        logging.info("rrt: " + str(self.rtt_trace))
+
+
+                        next_index = (self.rtt_index + 1) % len(self.rtt_trace)
+                        if next_index != 0:
+                                next_timestamp = self.rtt_trace[self.rtt_index + 1]["timestamp"]
+                        else:
+                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self.rtt_trace[-1]["timestamp"] + \
+                                                 datetime.timedelta(seconds=max_tracegap)
+        
+                        if self.rtt_timestamp + datetime.timedelta(seconds=sec) < next_timestamp:
+                                self.rtt_timestamp += datetime.timedelta(seconds=sec)
                 
-                rtt = self.rtt_trace[self.rtt_index]["rtt"]
-                self.rtt_index = (self.rtt_index + 1) % len(self.rtt_trace) 
+                                return self.rtt_trace[self.rtt_index]["rtt"], self.rtt_timestamp, \
+                                       self.rtt_trace[self.rtt_index]["absolute_timestamp"]
 
-
-                return rtt
-        def get_bandwidth(self):
+        def get_bandwidth(self, sec):
                 if self.status != self.__OK:
                         return self.status
 
-                bandwidth = self.bandwidth_trace[self.bandwidth_index]["bandwidth"]
-                self.bandwidth_index = (self.bandwidth_index + 1) % len(self.bandwidth_trace) 
+                while (True):
+                        next_index = (self.bandwidth_index + 1) % len(self.bandwidth_trace)
+                        if next_index != 0:
+                                next_timestamp = self.bandwidth_trace[self.bandwidth_index + 1]["timestamp"]
+                        else:
+                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self.bandwidth_trace[-1]["timestamp"] + \
+                                                 datetime.timedelta(seconds=max_tracegap)
 
-                return bandwidth
-        def get_networkvalues(self):
+
+                        if self.bandwidth_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
+                                self.bandwidth_index = next_index
+
+                                if next_index == 0:
+                                        diff_seconds = (self.bandwidth_trace[-1]["timestamp"] -
+                                                        self.bandwidth_trace[0]["timestamp"]  + 
+                                                        datetime.timedelta(seconds=max_tracegap)).total_seconds()
+                                        for elem in self.bandwidth_trace:
+                                                elem["timestamp"] = elem["timestamp"] + \
+                                                                    datetime.timedelta(seconds=diff_seconds)
+
+                                        logging.info(self.bandwidth_trace)
+
+
+                        next_index2 = (self.bandwidth_index + 1) % len(self.bandwidth_trace)
+                        if next_index2 != 0:
+                                next_timestamp2 = self.bandwidth_trace[self.bandwidth_index + 1]["timestamp"]
+                        else:
+                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp2 = self.bandwidth_trace[-1]["timestamp"] + \
+                                                  datetime.timedelta(seconds=max_tracegap)
+
+        
+                        if self.bandwidth_timestamp + datetime.timedelta(seconds=sec) < next_timestamp2:
+                                self.bandwidth_timestamp += datetime.timedelta(seconds=sec)
+                
+                                return self.bandwidth_trace[self.bandwidth_index]["bandwidth"], \
+                                       self.bandwidth_timestamp, \
+                                       self.bandwidth_trace[self.bandwidth_index]["absolute_timestamp"]
+
+            
+
+        def get_networkvalues(self, sec):
                 if self.status != self.__OK:
                         return self.status, self.status
 
-                rtt = self.get_rtt()
-                bandwidth = self.get_bandwidth()
+                rtt = self.get_rtt(sec)
+                bandwidth = self.get_bandwidth(sec)
 
                 return rtt, bandwidth
  
@@ -179,7 +256,6 @@ class NetworkTraceManager:
         def compact_trace(self, tracelist):
                 max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
                 logging.info("\tmax_tracegap=" + str(max_tracegap))
-                logging.info("\t" + str(tracelist))
 
                 previous_time = tracelist[0]["timestamp"]                
                 for i in range(0, len(tracelist)):
