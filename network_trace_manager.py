@@ -20,6 +20,7 @@ class NetworkTraceManager:
 
         @staticmethod
         def get_tracelist(typeofmeasure = None, senderIdentity = None, receiverIdentity = None, 
+                          first_endpoint = None, second_endpoint = None,
                           direction = None, command = None, noise = None, observerPos = None, 
                           access_technology = None):
                 trace_list = []
@@ -43,15 +44,18 @@ class NetworkTraceManager:
                                 if key == "command":
                                         if command != None and command != elem[key]:
                                                 discard_elem = True
-                                                continue 
+                                                continue
 
                                         curr_command = str(key) + ": " + elem[key]    
                                 if key == "direction":
-                                        if (direction != None and direction != elem[key]):
+                                        if direction != None and direction != elem[key]:
                                                 discard_elem = True
                                                 continue
                                                 
-                                        curr_direction = str(key) + ": " + elem[key]
+                                        if elem[key] != None:
+                                                curr_direction = str(key) + ": " + (elem[key])
+                                        else:
+                                                curr_direction = None
                                 if key == "ObserverPos":                                        
                                         if observerPos != None and observerPos != elem[key]:
                                                 discard_elem = True
@@ -84,12 +88,34 @@ class NetworkTraceManager:
                                         curr_accesstech = str(key) + ": " + elem[key]
                                 if key == "path":
                                         curr_path = elem[key]
+
+                                if key == "first-endpoint":              
+                                        if first_endpoint != None and first_endpoint != elem[key]:
+                                                discard_elem = True
+                                                continue
+
+                                        curr_firstendpoint  = str(key) + ": " + elem[key]
+                                if key == "second-endpoint":
+                                        if second_endpoint != None and second_endpoint != elem[key]:
+                                                discard_elem = True
+                                                continue
+
+                                        curr_secondendpoint = str(key) + ": " + elem[key]
                                         
                         if discard_elem != True:
-                                config = curr_typeofmeasure + ", " + curr_command + ", " \
-                                       + curr_direction + ", " + curr_observerPos + ", " + curr_noise \
-                                       + ", " + curr_senderIdentity + ", " + curr_receiverIdentity \
-                                       + ", " + curr_accesstech
+                                if "RTT" in curr_command  and curr_direction != None:
+                                        continue
+                                
+                                config = curr_typeofmeasure + ", " + curr_command + ", " 
+                                config += curr_observerPos + ", " + curr_noise  +", " 
+
+                                if "TCPBandwidth" in curr_command or "UDPBandwidth" in curr_command: 
+                                        config += curr_direction + ", " 
+                                        config += curr_senderIdentity + ", " + curr_receiverIdentity + ", "
+                                elif "TCPRTT" in curr_command or "UDPRTT" in curr_command: 
+                                        config += curr_firstendpoint + ", " + curr_secondendpoint + ", "
+                                config += curr_accesstech
+                                
 
                                 trace_list.append(config)
 
@@ -394,8 +420,7 @@ class NetworkTraceManager:
                                         path = None
                                         break
                                 if key == "path":
-                                        path = elem[key]
-                                
+                                        path = elem[key]                                                            
                                 if key == "direction" and elem[key] == "downstream":
                                         if (sender_identity == "Client" and receiver_identity == "Observer")  or\
                                            (sender_identity == "Observer" and receiver_identity == "Server"):
@@ -406,6 +431,10 @@ class NetworkTraceManager:
                                            (sender_identity == "Server" and receiver_identity == "Observer"):
                                                 path = None
                                                 break 
+                                if key == "first-endpoint":
+                                        if  elem[key]!=sender_identity and elem[key]!=receiver_identity:
+                                                path = None
+                                                break
                                        
      
                         if path != None:
