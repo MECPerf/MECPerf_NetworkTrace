@@ -19,8 +19,7 @@ class NetworkTraceManager:
         __WRONG_INPUTFILEPATH = -2
 
         @staticmethod
-        def get_tracelist(typeofmeasure = None, senderIdentity = None, receiverIdentity = None, 
-                          first_endpoint = None, second_endpoint = None,
+        def get_tracelist(typeofmeasure = None, first_endpoint = None, second_endpoint = None,
                           direction = None, command = None, noise = None, observerPos = None, 
                           access_technology = None):
                 trace_list = []
@@ -69,13 +68,13 @@ class NetworkTraceManager:
 
                                         curr_noise = str(key) + ": " + elem[key]
                                 if key == "senderIdentity":              
-                                        if senderIdentity != None and senderIdentity != elem[key]:
+                                        if first_endpoint != None and first_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
                                         curr_senderIdentity  = str(key) + ": " + elem[key]
                                 if key == "receiverIdentity":
-                                        if receiverIdentity != None and receiverIdentity != elem[key]:
+                                        if second_endpoint != None and second_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
