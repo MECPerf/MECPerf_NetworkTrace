@@ -6,12 +6,11 @@ import datetime
 import logging
 import json
 
-
-logging.basicConfig(filename="file.log", filemode='w', 
-                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(funcName)s(): %(message)s', 
-                    datefmt='%H:%M:%S', level=logging.DEBUG)
-
 datetime_format = "%Y-%m-%d %H:%M:%S.%f"
+
+class InvalidConfiguration(Exception):
+        """Invalid configuration"""
+        pass
 
 class NetworkTraceManager:
         __OK = 0
@@ -19,16 +18,16 @@ class NetworkTraceManager:
         __WRONG_INPUTFILEPATH = -2
 
         @staticmethod
-        def get_tracelist(typeofmeasure = None, first_endpoint = None, second_endpoint = None,
+        def get_tracelist(mapping_file, typeofmeasure = None, first_endpoint = None, second_endpoint = None,
                           direction = None, command = None, noise = None, observerPos = None, 
                           access_technology = None):
                 trace_list = []
 
-                with open ("inputFiles/mapping.json", "r") as inputjson:
+                with open (mapping_file, "r") as inputjson:
                         data = json.load(inputjson)
 
                 for elem in data:
-                        config = ""
+                        config = {}
                         discard_elem = False
                         for key in elem :
                                 if discard_elem == True:
@@ -39,20 +38,20 @@ class NetworkTraceManager:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_typeofmeasure = str(key) + ": " + elem[key]
+                                        curr_typeofmeasure = elem[key]
                                 if key == "command":
                                         if command != None and command != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_command = str(key) + ": " + elem[key]    
+                                        curr_command = elem[key]    
                                 if key == "direction":
                                         if direction != None and direction != elem[key]:
                                                 discard_elem = True
                                                 continue
                                                 
                                         if elem[key] != None:
-                                                curr_direction = str(key) + ": " + (elem[key])
+                                                curr_direction = elem[key]
                                         else:
                                                 curr_direction = None
                                 if key == "ObserverPos":                                        
@@ -60,226 +59,243 @@ class NetworkTraceManager:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_observerPos = str(key) + ": " + elem[key]
+                                        curr_observerPos = elem[key]
                                 if key == "noise":
                                         if noise != None and noise != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_noise = str(key) + ": " + elem[key]
+                                        curr_noise = elem[key]
                                 if key == "senderIdentity":              
                                         if first_endpoint != None and first_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_senderIdentity  = str(key) + ": " + elem[key]
+                                        curr_senderIdentity  = elem[key]
                                 if key == "receiverIdentity":
                                         if second_endpoint != None and second_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_receiverIdentity = str(key) + ": " + elem[key]
+                                        curr_receiverIdentity = elem[key]
                                 if key == "access-technology":
                                         if access_technology != None and access_technology != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_accesstech = str(key) + ": " + elem[key]
+                                        curr_accesstech = elem[key]
                                 if key == "path":
-                                        curr_path = elem[key]
+                                        pass
 
                                 if key == "first-endpoint":              
                                         if first_endpoint != None and first_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_firstendpoint  = str(key) + ": " + elem[key]
+                                        curr_firstendpoint  = elem[key]
                                 if key == "second-endpoint":
                                         if second_endpoint != None and second_endpoint != elem[key]:
                                                 discard_elem = True
                                                 continue
 
-                                        curr_secondendpoint = str(key) + ": " + elem[key]
+                                        curr_secondendpoint = elem[key]
                                         
                         if discard_elem != True:
                                 if "RTT" in curr_command  and curr_direction != None:
                                         continue
                                 
-                                config = curr_typeofmeasure + ", " + curr_command + ", " 
-                                config += curr_observerPos + ", " + curr_noise  +", " 
+                                config['typeofmeasure'] = curr_typeofmeasure
+                                config['command'] = curr_command
+                                config['ObserverPos'] = curr_observerPos
+                                config['noise'] = curr_noise
+                                config['access-technology'] = curr_accesstech
 
                                 if "TCPBandwidth" in curr_command or "UDPBandwidth" in curr_command: 
-                                        config += curr_direction + ", " 
-                                        config += curr_senderIdentity + ", " + curr_receiverIdentity + ", "
+                                        config['direction'] = curr_direction
+                                        config['senderIdentity'] = curr_senderIdentity
+                                        config['receiverIdentity'] = curr_receiverIdentity
+
                                 elif "TCPRTT" in curr_command or "UDPRTT" in curr_command: 
-                                        config += curr_firstendpoint + ", " + curr_secondendpoint + ", "
-                                config += curr_accesstech
-                                
+                                        config['first-endpoint'] = curr_firstendpoint
+                                        config['second-endpoint'] = curr_secondendpoint
 
                                 trace_list.append(config)
-
                 
                 return trace_list
 
-
         def __init__(self, config):
-                self.status = self.__OK
-                self.rtt_trace = []
-                self.rtt_index = 0
-                self.rtt_timestamp = None
-                self.bandwidth_trace = []
-                self.bandwidth_index = 0    
-                self.bandwidth_timestamp = None            
-                self.instanceconfiguration = config
+                self._status = self.__OK
+                self._rtt_trace = []
+                self._rtt_index = 0
+                self._rtt_timestamp = None
+                self._bandwidth_trace = []
+                self._bandwidth_index = 0    
+                self._bandwidth_timestamp = None            
+                self._instanceconfiguration = config
 
-                self.check_instanceconfiguration()
+                self._check__instanceconfiguration()
                 self.print_instanceconfiguration()
                 
                 #initialize the random generator
-                random.seed(self.instanceconfiguration.getint("seed"))
+                random.seed(self._instanceconfiguration.getint("seed"))
 
-                self.get_traces()
-                self.rtt_timestamp = self.rtt_trace[0]["timestamp"]
-                self.bandwidth_timestamp = self.bandwidth_trace[0]["timestamp"]
+                self._get_traces()
+                self._rtt_timestamp = self._rtt_trace[0]["timestamp"]
+                self._bandwidth_timestamp = self._bandwidth_trace[0]["timestamp"]
 
-                logging.info("rtt: " + str(self.rtt_trace))
-                logging.info("rtt_timestamp: " + str(self.rtt_timestamp))
-                logging.info("bandwidth: " + str(self.bandwidth_trace))
-                logging.info("bandwidth_timestamp: " + str(self.bandwidth_timestamp))
-                
+                logging.info("rtt: " + str(self._rtt_trace))
+                logging.info("_rtt_timestamp: " + str(self._rtt_timestamp))
+                logging.info("bandwidth: " + str(self._bandwidth_trace))
+                logging.info("_bandwidth_timestamp: " + str(self._bandwidth_timestamp))
+
+        def _throw_if_invalid(self):
+                """Throw an exception if the current status is not OK"""
+
+                if self._status != self.__OK:
+                        raise InvalidConfiguration
+
+        def get_all_values(self, field_type):
+                """Return all the possible values for a given field type, according to the mapping file"""
+
+                self._throw_if_invalid()
+
+                trace_list = self.get_tracelist(self._instanceconfiguration.get('mapping_file'))
+
+                ret = set()
+                for elem in trace_list:
+                        for k, v in elem.items():
+                                if k == field_type:
+                                        ret.add(v)
+
+                return ret
 
         def get_rtt(self, sec):
-                if self.status != self.__OK:
-                        return self.status
+                self._throw_if_invalid()
  
                 while (True):
-                        next_index = (self.rtt_index + 1) % len(self.rtt_trace)
+                        next_index = (self._rtt_index + 1) % len(self._rtt_trace)
                         if next_index != 0:
-                                next_timestamp = self.rtt_trace[self.rtt_index + 1]["timestamp"]
+                                next_timestamp = self._rtt_trace[self._rtt_index + 1]["timestamp"]
                         else:
-                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
-                                next_timestamp = self.rtt_trace[-1]["timestamp"] + \
+                                max_tracegap = self._instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self._rtt_trace[-1]["timestamp"] + \
                                                  datetime.timedelta(seconds=max_tracegap)
 
 
-                        if self.rtt_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
-                                self.rtt_index = next_index
+                        if self._rtt_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
+                                self._rtt_index = next_index
 
                                 if next_index == 0:
-                                        diff_seconds = (self.rtt_trace[-1]["timestamp"] -
-                                                        self.rtt_trace[0]["timestamp"]  + 
+                                        diff_seconds = (self._rtt_trace[-1]["timestamp"] -
+                                                        self._rtt_trace[0]["timestamp"]  + 
                                                         datetime.timedelta(seconds=max_tracegap)).total_seconds()
-                                        for elem in self.rtt_trace:
+                                        for elem in self._rtt_trace:
                                                 elem["timestamp"] = elem["timestamp"] + \
                                                                     datetime.timedelta(seconds=diff_seconds)
 
-                                        logging.info("rrt: " + str(self.rtt_trace))
+                                        logging.info("rrt: " + str(self._rtt_trace))
 
 
-                        next_index = (self.rtt_index + 1) % len(self.rtt_trace)
+                        next_index = (self._rtt_index + 1) % len(self._rtt_trace)
                         if next_index != 0:
-                                next_timestamp = self.rtt_trace[self.rtt_index + 1]["timestamp"]
+                                next_timestamp = self._rtt_trace[self._rtt_index + 1]["timestamp"]
                         else:
-                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
-                                next_timestamp = self.rtt_trace[-1]["timestamp"] + \
+                                max_tracegap = self._instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self._rtt_trace[-1]["timestamp"] + \
                                                  datetime.timedelta(seconds=max_tracegap)
         
-                        if self.rtt_timestamp + datetime.timedelta(seconds=sec) < next_timestamp:
-                                self.rtt_timestamp += datetime.timedelta(seconds=sec)
+                        if self._rtt_timestamp + datetime.timedelta(seconds=sec) < next_timestamp:
+                                self._rtt_timestamp += datetime.timedelta(seconds=sec)
                 
-                                return self.rtt_trace[self.rtt_index]["rtt"], self.rtt_timestamp, \
-                                       self.rtt_trace[self.rtt_index]["absolute_timestamp"]
+                                return self._rtt_trace[self._rtt_index]["rtt"], self._rtt_timestamp, \
+                                       self._rtt_trace[self._rtt_index]["absolute_timestamp"]
 
         def get_bandwidth(self, sec):
-                if self.status != self.__OK:
-                        return self.status
+                self._throw_if_invalid()
 
                 while (True):
-                        next_index = (self.bandwidth_index + 1) % len(self.bandwidth_trace)
+                        next_index = (self._bandwidth_index + 1) % len(self._bandwidth_trace)
                         if next_index != 0:
-                                next_timestamp = self.bandwidth_trace[self.bandwidth_index + 1]["timestamp"]
+                                next_timestamp = self._bandwidth_trace[self._bandwidth_index + 1]["timestamp"]
                         else:
-                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
-                                next_timestamp = self.bandwidth_trace[-1]["timestamp"] + \
+                                max_tracegap = self._instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp = self._bandwidth_trace[-1]["timestamp"] + \
                                                  datetime.timedelta(seconds=max_tracegap)
 
 
-                        if self.bandwidth_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
-                                self.bandwidth_index = next_index
+                        if self._bandwidth_timestamp + datetime.timedelta(seconds=sec) >= next_timestamp:
+                                self._bandwidth_index = next_index
 
                                 if next_index == 0:
-                                        diff_seconds = (self.bandwidth_trace[-1]["timestamp"] -
-                                                        self.bandwidth_trace[0]["timestamp"]  + 
+                                        diff_seconds = (self._bandwidth_trace[-1]["timestamp"] -
+                                                        self._bandwidth_trace[0]["timestamp"]  + 
                                                         datetime.timedelta(seconds=max_tracegap)).total_seconds()
-                                        for elem in self.bandwidth_trace:
+                                        for elem in self._bandwidth_trace:
                                                 elem["timestamp"] = elem["timestamp"] + \
                                                                     datetime.timedelta(seconds=diff_seconds)
 
-                                        logging.info(self.bandwidth_trace)
+                                        logging.info(self._bandwidth_trace)
 
 
-                        next_index2 = (self.bandwidth_index + 1) % len(self.bandwidth_trace)
+                        next_index2 = (self._bandwidth_index + 1) % len(self._bandwidth_trace)
                         if next_index2 != 0:
-                                next_timestamp2 = self.bandwidth_trace[self.bandwidth_index + 1]["timestamp"]
+                                next_timestamp2 = self._bandwidth_trace[self._bandwidth_index + 1]["timestamp"]
                         else:
-                                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
-                                next_timestamp2 = self.bandwidth_trace[-1]["timestamp"] + \
+                                max_tracegap = self._instanceconfiguration.getint("max_tracegap_seconds")
+                                next_timestamp2 = self._bandwidth_trace[-1]["timestamp"] + \
                                                   datetime.timedelta(seconds=max_tracegap)
 
         
-                        if self.bandwidth_timestamp + datetime.timedelta(seconds=sec) < next_timestamp2:
-                                self.bandwidth_timestamp += datetime.timedelta(seconds=sec)
+                        if self._bandwidth_timestamp + datetime.timedelta(seconds=sec) < next_timestamp2:
+                                self._bandwidth_timestamp += datetime.timedelta(seconds=sec)
                 
-                                return self.bandwidth_trace[self.bandwidth_index]["bandwidth"], \
-                                       self.bandwidth_timestamp, \
-                                       self.bandwidth_trace[self.bandwidth_index]["absolute_timestamp"]
+                                return self._bandwidth_trace[self._bandwidth_index]["bandwidth"], \
+                                       self._bandwidth_timestamp, \
+                                       self._bandwidth_trace[self._bandwidth_index]["absolute_timestamp"]
 
             
 
         def get_networkvalues(self, sec):
-                if self.status != self.__OK:
-                        return self.status, self.status
+                self._throw_if_invalid()
 
                 rtt = self.get_rtt(sec)
                 bandwidth = self.get_bandwidth(sec)
 
                 return rtt, bandwidth
- 
 
-        def check_instanceconfiguration(self):
-                if self.instanceconfiguration.getint("seed") == None:
-                        print("Error: seed is missing")
-                        self.status = self.__WRONG_CONFIGURATION
+        def _check__instanceconfiguration(self):
+                if self._instanceconfiguration.getint("seed") == None:
+                        logging.error("Error: seed is missing")
+                        self._status = self.__WRONG_CONFIGURATION
                         return
 
-                if self.instanceconfiguration.get("typeofmeasure") == None:
-                        print("Error: typeofmeasure is missing")
-                        self.status = self.__WRONG_CONFIGURATION
+                if self._instanceconfiguration.get("typeofmeasure") == None:
+                        logging.error("Error: typeofmeasure is missing")
+                        self._status = self.__WRONG_CONFIGURATION
                         return
                 
-                if self.instanceconfiguration.get("typeofmeasure") == "active":
-                        if self.instanceconfiguration.get("protocol") == None or \
-                           self.instanceconfiguration.get("observerPos") == None or \
-                           self.instanceconfiguration.get("cross-traffic") == None or \
-                           self.instanceconfiguration.get("access-technology") == None or \
-                           self.instanceconfiguration.get("sender-identity") == None or \
-                           self.instanceconfiguration.get("receiver-identity") == None or \
-                           self.instanceconfiguration.get("trace") == None:
-                                print("Error: Wrong configuration")
-                                self.status = self.__WRONG_CONFIGURATION
-                                return                
+                if self._instanceconfiguration.get("typeofmeasure") == "active":
+                        if self._instanceconfiguration.get("protocol") == None or \
+                           self._instanceconfiguration.get("observerPos") == None or \
+                           self._instanceconfiguration.get("cross-traffic") == None or \
+                           self._instanceconfiguration.get("access-technology") == None or \
+                           self._instanceconfiguration.get("sender-identity") == None or \
+                           self._instanceconfiguration.get("receiver-identity") == None or \
+                           self._instanceconfiguration.get("trace") == None:
+                                logging.error("Error: Wrong configuration")
+                                self._status = self.__WRONG_CONFIGURATION
+                                return
+
         def print_instanceconfiguration(self):
-                if self.status != self.__OK:
-                        return self.status
+                self._throw_if_invalid()
                 
                 logging.info("\n")
                 logging.info("NetworkTraceManager instance configuration: ")
-                for key in self.instanceconfiguration:
-                        logging.info ("\t" + key + " = " + self.instanceconfiguration.get(key))
+                for key in self._instanceconfiguration:
+                        logging.info ("\t" + key + " = " + self._instanceconfiguration.get(key))
 
-
-        def compact_trace(self, tracelist):
-                max_tracegap = self.instanceconfiguration.getint("max_tracegap_seconds")
+        def _compact_trace(self, tracelist):
+                max_tracegap = self._instanceconfiguration.getint("max_tracegap_seconds")
                 logging.info("\tmax_tracegap=" + str(max_tracegap))
 
                 previous_time = tracelist[0]["timestamp"]                
@@ -300,22 +316,21 @@ class NetworkTraceManager:
                         
 
 
-        def get_traces(self):
-                if self.status != self.__OK:
-                        return self.status
+        def _get_traces(self):
+                self._throw_if_invalid()
 
-                rtt_tracefile = self.select_trace_file("RTT")
-                bandwidth_tracefile = self.select_trace_file("Bandwidth")
-                if rtt_tracefile == None or bandwidth_tracefile == None:
-                        self.status = self.__WRONG_INPUTFILEPATH
+                _rtt_tracefile = self._select_trace_file("RTT")
+                _bandwidth_tracefile = self._select_trace_file("Bandwidth")
+                if _rtt_tracefile == None or _bandwidth_tracefile == None:
+                        self._status = self.__WRONG_INPUTFILEPATH
                         return
 
 
-                t_start, t_end = self.compute_randomtimes(rtt_tracefile)
-                minimum_tracelen = self.instanceconfiguration.getint("mininimum_tracelen")
+                t_start, t_end = self._compute_randomtimes(_rtt_tracefile)
+                minimum_tracelen = self._instanceconfiguration.getint("mininimum_tracelen")
 
                 #read the rtt
-                with open (rtt_tracefile, "r") as input_tracefile:
+                with open (_rtt_tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  
 
                         i = 0
@@ -338,12 +353,12 @@ class NetworkTraceManager:
                                 i = (i + 1) % len(data_list)
                                 if i == 0:
                                         restarted = True
-                                if len(self.rtt_trace) >= minimum_tracelen and max_timestamp > t_end:
+                                if len(self._rtt_trace) >= minimum_tracelen and max_timestamp > t_end:
                                         break
 
-                                self.rtt_trace.append({"timestamp": trace_timestamp, "rtt": trace_data, "absolute_timestamp": trace_timestamp})   
+                                self._rtt_trace.append({"timestamp": trace_timestamp, "rtt": trace_data, "absolute_timestamp": trace_timestamp})   
                 #read the bandwidth values
-                with open (bandwidth_tracefile, "r") as input_tracefile:
+                with open (_bandwidth_tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  
 
                         i = 0
@@ -367,34 +382,33 @@ class NetworkTraceManager:
                                 if i == 0:
                                         restarted = True
 
-                                if len(self.bandwidth_trace) >= minimum_tracelen and max_timestamp > t_end:                                        
+                                if len(self._bandwidth_trace) >= minimum_tracelen and max_timestamp > t_end:                                        
                                         break
 
-                                self.bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data, "absolute_timestamp": trace_timestamp})
+                                self._bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data, "absolute_timestamp": trace_timestamp})
 
-                self.compact_trace(self.rtt_trace)
-                self.compact_trace(self.bandwidth_trace)
+                self._compact_trace(self._rtt_trace)
+                self._compact_trace(self._bandwidth_trace)
 
         
 
-        def select_trace_file(self, m):
-                typeofmeasure = self.instanceconfiguration.get("typeofmeasure").strip()
-                command = self.instanceconfiguration.get("protocol").strip() + m.strip()
-                observerPos = self.instanceconfiguration.get("observerPos").strip()
-                cross_traffic = self.instanceconfiguration.get("cross-traffic").strip()
-                access_technology = self.instanceconfiguration.get("access-technology").strip()
-                sender_identity = self.instanceconfiguration.get("sender-identity").strip()
-                receiver_identity = self.instanceconfiguration.get("receiver-identity").strip()
+        def _select_trace_file(self, m):
+                typeofmeasure = self._instanceconfiguration.get("typeofmeasure").strip()
+                command = self._instanceconfiguration.get("protocol").strip() + m.strip()
+                observerPos = self._instanceconfiguration.get("observerPos").strip()
+                cross_traffic = self._instanceconfiguration.get("cross-traffic").strip()
+                access_technology = self._instanceconfiguration.get("access-technology").strip()
+                sender_identity = self._instanceconfiguration.get("sender-identity").strip()
+                receiver_identity = self._instanceconfiguration.get("receiver-identity").strip()
 
                 logging.info("searching for " + typeofmeasure + " " + command + ", " + observerPos + ", " + \
                          cross_traffic + ", " + access_technology + ", " + sender_identity + ", " + \
                          receiver_identity)
 
-                with open ("inputFiles/mapping.json", "r") as inputjson:
+                with open (self._instanceconfiguration.get("mapping_file"), "r") as inputjson:
                         data = json.load(inputjson)
 
                 for elem in data:
-                        config = ""
                         path = None
                         for key in elem :
                                 if key == "typeofmeasure" and typeofmeasure != elem[key]:
@@ -437,14 +451,13 @@ class NetworkTraceManager:
                                        
      
                         if path != None:
-                                print ("trace_file:\t" + path)
                                 logging.info("trace_file:\t" + path)
                                 return path
 
                 return None
 
 
-        def compute_randomtimes(self, tracefile):
+        def _compute_randomtimes(self, tracefile):
                 #t_start & t_end are selected randomly
                 with open(tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  

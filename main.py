@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 
+import logging
 import configparser
 import copy
 
 from network_trace_manager import NetworkTraceManager 
+
+logging.basicConfig(filename="file.log", filemode='w', 
+                    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(funcName)s(): %(message)s', 
+                    datefmt='%H:%M:%S', level=logging.DEBUG)
 
 config = configparser.ConfigParser()
 config.read("conf.ini")
