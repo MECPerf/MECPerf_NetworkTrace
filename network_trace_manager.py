@@ -202,7 +202,7 @@ class NetworkTraceManager:
                         assert trace_type in elem
 
                         timestamps.append((elem['timestamp'] - first_timestamp).total_seconds())
-                        values.append(elem[trace_type])
+                        values.append(float(elem[trace_type]))
                 
                 return [timestamps, values]
 
@@ -442,7 +442,7 @@ class NetworkTraceManager:
                         # however, the absolute timestamp is kept equal to
                         # the actual timestamp from the trace file
                         first_looped_timestamp = datetime.datetime.strptime(
-                                        data_list[starting_item - 1].split("_")[0].strip(),
+                                        data_list[0].split("_")[0].strip(),
                                         datetime_format)
                         for i in range(0, starting_item):
                                 trace_timestamp = datetime.datetime.strptime(

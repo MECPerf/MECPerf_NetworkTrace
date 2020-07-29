@@ -131,11 +131,15 @@ b'''[
             self.assertEqual(2, len(rtt_timeseries))
             self.assertEqual(len(rtt_timeseries[0]), len(rtt_timeseries[1]))
             self.assertEqual(0, rtt_timeseries[0][0])
+            for i in range(1, len(rtt_timeseries)):
+                self.assertLessEqual(rtt_timeseries[0][i-1], rtt_timeseries[0][i])
 
             bw_timeseries = trace.get_bandwidth_timeseries()
             self.assertEqual(2, len(bw_timeseries))
             self.assertEqual(len(bw_timeseries[0]), len(bw_timeseries[1]))
             self.assertEqual(0, bw_timeseries[0][0])
+            for i in range(1, len(bw_timeseries)):
+                self.assertLessEqual(bw_timeseries[0][i-1], bw_timeseries[0][i])
 
 if __name__ == '__main__':
     unittest.main()
