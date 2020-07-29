@@ -17,7 +17,6 @@ class TestNetworkTraceManager(unittest.TestCase):
         conf_file.write(
 b'''
 [DEFAULT]
-mininimum_tracelen = 6
 max_tracegap_seconds=30
 mapping_file=inputFiles/mapping.json
 
@@ -119,6 +118,24 @@ b'''[
             self.assertEqual({'Observer', 'Client', 'Server'}, trace.get_all_values('receiverIdentity'))
             self.assertEqual({'Client', 'Server'}, trace.get_all_values('first-endpoint'))
             self.assertEqual({'Observer'}, trace.get_all_values('second-endpoint'))
+
+    def test_get_timeseries(self):
+        with tempfile.NamedTemporaryFile() as conf_file:
+            TestNetworkTraceManager.write_to_conf_file(conf_file)
+            config = configparser.ConfigParser()
+            config.read(conf_file.name)
+
+            trace = NetworkTraceManager(config["confGood"])
+
+            rtt_timeseries = trace.get_rtt_timeseries()
+            self.assertEqual(2, len(rtt_timeseries))
+            self.assertEqual(len(rtt_timeseries[0]), len(rtt_timeseries[1]))
+            self.assertEqual(0, rtt_timeseries[0][0])
+
+            bw_timeseries = trace.get_bandwidth_timeseries()
+            self.assertEqual(2, len(bw_timeseries))
+            self.assertEqual(len(bw_timeseries[0]), len(bw_timeseries[1]))
+            self.assertEqual(0, bw_timeseries[0][0])
 
 if __name__ == '__main__':
     unittest.main()

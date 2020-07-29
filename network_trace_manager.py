@@ -169,6 +169,43 @@ class NetworkTraceManager:
 
                 return ret
 
+        def get_rtt_timeseries(self):
+                """Return the full RTT timeseries as two vectors of equal size: the first vector
+                contains the timestamp of the i-th sample, in seconds starting from 0, the second
+                vector contains the RTT of the i-th sample"""
+
+                return NetworkTraceManager._get_timeseries(
+                        self._rtt_trace,
+                        'rtt')
+
+        def get_bandwidth_timeseries(self):
+                """Return the full bandwidth timeseries as two vectors of equal size: the first vector
+                contains the timestamp of the i-th sample, in seconds starting from 0, the second
+                vector contains the bandwidth of the i-th sample"""
+
+                return NetworkTraceManager._get_timeseries(
+                        self._bandwidth_trace,
+                        'bandwidth')
+
+        @staticmethod
+        def _get_timeseries(trace, trace_type):
+                timestamps = []
+                values = []
+
+                assert trace_type in ['rtt', 'bandwidth']
+                assert len(trace) > 0
+                assert 'timestamp' in trace[0]
+
+                first_timestamp = trace[0]['timestamp']
+                for elem in trace:
+                        assert 'timestamp' in elem
+                        assert trace_type in elem
+
+                        timestamps.append((elem['timestamp'] - first_timestamp).total_seconds())
+                        values.append(elem[trace_type])
+                
+                return [timestamps, values]
+
         def get_rtt(self, sec):
                 self._throw_if_invalid()
  
@@ -319,78 +356,112 @@ class NetworkTraceManager:
         def _get_traces(self):
                 self._throw_if_invalid()
 
-                _rtt_tracefile = self._select_trace_file("RTT")
-                _bandwidth_tracefile = self._select_trace_file("Bandwidth")
-                if _rtt_tracefile == None or _bandwidth_tracefile == None:
+                rtt_tracefile = self._select_trace_file("RTT")
+                bandwidth_tracefile = self._select_trace_file("Bandwidth")
+                logging.info(f'RTT tracefile:       {rtt_tracefile}')
+                logging.info(f'Bandwidth tracefile: {bandwidth_tracefile}')
+
+                if rtt_tracefile == None or bandwidth_tracefile == None:
                         self._status = self.__WRONG_INPUTFILEPATH
                         return
 
-
-                t_start, t_end = self._compute_randomtimes(_rtt_tracefile)
-                minimum_tracelen = self._instanceconfiguration.getint("mininimum_tracelen")
-
-                #read the rtt
-                with open (_rtt_tracefile, "r") as input_tracefile:
-                        data_list = input_tracefile.readline().split(",")  
-
-                        i = 0
-                        restarted = False
-                        max_timestamp = t_start
-
-                        while (True):
-                                
-                                trace_timestamp = datetime.datetime.strptime(data_list[i].split("_")[0].strip(), datetime_format)
-                                if not restarted and trace_timestamp < t_start:
-                                        i = (i + 1) % len(data_list)
-                                        if i == 0: 
-                                                restarted = True
-                                        continue
-
-                                trace_data = data_list[i].split("_")[1].strip()
-                                if trace_timestamp > max_timestamp:
-                                        max_timestamp = trace_timestamp
-                                                        
-                                i = (i + 1) % len(data_list)
-                                if i == 0:
-                                        restarted = True
-                                if len(self._rtt_trace) >= minimum_tracelen and max_timestamp > t_end:
-                                        break
-
-                                self._rtt_trace.append({"timestamp": trace_timestamp, "rtt": trace_data, "absolute_timestamp": trace_timestamp})   
-                #read the bandwidth values
-                with open (_bandwidth_tracefile, "r") as input_tracefile:
-                        data_list = input_tracefile.readline().split(",")  
-
-                        i = 0
-                        restarted = False
-                        max_timestamp = t_start
-
-                        while (True):
-                                
-                                trace_timestamp = datetime.datetime.strptime(data_list[i].split("_")[0].strip(), datetime_format)
-                                if not restarted and trace_timestamp < t_start:
-                                        i = (i + 1) % len(data_list)
-                                        if i == 0: 
-                                                restarted = True
-                                        continue
-
-                                trace_data = data_list[i].split("_")[1].strip()
-                                if trace_timestamp > max_timestamp:
-                                        max_timestamp = trace_timestamp
-                                                        
-                                i = (i + 1) % len(data_list)
-                                if i == 0:
-                                        restarted = True
-
-                                if len(self._bandwidth_trace) >= minimum_tracelen and max_timestamp > t_end:                                        
-                                        break
-
-                                self._bandwidth_trace.append({"timestamp": trace_timestamp, "bandwidth": trace_data, "absolute_timestamp": trace_timestamp})
+                starting_time = NetworkTraceManager._swallow_trace(
+                        rtt_tracefile,
+                        self._rtt_trace,
+                        'rtt',
+                        None)
+                assert starting_time is not None
+                NetworkTraceManager._swallow_trace(
+                        bandwidth_tracefile,
+                        self._bandwidth_trace,
+                        'bandwidth',
+                        starting_time)
 
                 self._compact_trace(self._rtt_trace)
                 self._compact_trace(self._bandwidth_trace)
 
-        
+        @staticmethod
+        def _swallow_trace(trace_filename, trace_out, trace_type, starting_time):
+                assert trace_type in ['rtt', 'bandwidth']
+                assert len(trace_out) == 0
+
+                with open (trace_filename, "r") as input_tracefile:
+                        # read whole file (1 file == 1 line)
+                        data_list = input_tracefile.readline().split(",")
+
+                        assert len(data_list) >= 2
+
+                        # select random starting point, unless the client
+                        # specified a given starting point to use as argument
+                        #
+                        # never select the first element as the starting element
+                        # (not to concern with that corner case)
+                        if starting_time:
+                                # select the starting_item as the element before
+                                # the one exceeding the given time (if this happens
+                                # at the very first element, then the starting_item
+                                # is 0), or if no elements exceed the given
+                                # time then we set starting_time to the last
+                                # element
+                                starting_item = len(data_list) - 1
+                                for i in range(len(data_list)):
+                                        trace_timestamp = datetime.datetime.strptime(
+                                                data_list[i].split("_")[0].strip(),
+                                                datetime_format)
+                                        if trace_timestamp > starting_time:
+                                                starting_item = i - 1 if i > 0 else 0
+                                                break
+                        else:
+                                starting_item = random.randint(1, len(data_list) - 1)
+
+                        # insert all elements from the starting one onward
+                        #
+                        # the timestamp is kept the same as the
+                        # actual timestamp read from file
+                        for i in range(starting_item, len(data_list)):
+                                trace_timestamp = datetime.datetime.strptime(
+                                        data_list[i].split("_")[0].strip(),
+                                        datetime_format)
+                                trace_data = data_list[i].split("_")[1].strip()
+
+                                trace_out.append({
+                                        "timestamp": trace_timestamp,
+                                        trace_type: trace_data,
+                                        "absolute_timestamp": trace_timestamp})
+
+                        last_timestamp = datetime.datetime.strptime(
+                                        data_list[len(data_list) - 1].split("_")[0].strip(),
+                                        datetime_format)
+
+                        # insert all elements preceding the starting one
+                        # 
+                        # the timestamp is modified so as to pretend
+                        # that the values before the starting element have been
+                        # obtained _after_ that (looping)
+                        #
+                        # however, the absolute timestamp is kept equal to
+                        # the actual timestamp from the trace file
+                        first_looped_timestamp = datetime.datetime.strptime(
+                                        data_list[starting_item - 1].split("_")[0].strip(),
+                                        datetime_format)
+                        for i in range(0, starting_item):
+                                trace_timestamp = datetime.datetime.strptime(
+                                        data_list[i].split("_")[0].strip(),
+                                        datetime_format)
+                                trace_data = data_list[i].split("_")[1].strip()
+                                adjusted_timestamp = \
+                                        last_timestamp + \
+                                        (trace_timestamp - first_looped_timestamp)
+
+                                trace_out.append({
+                                        "timestamp": adjusted_timestamp,
+                                        trace_type: trace_data,
+                                        "absolute_timestamp": trace_timestamp})
+
+                        return datetime.datetime.strptime(
+                                        data_list[starting_item].split("_")[0].strip(),
+                                        datetime_format)
+                return None
 
         def _select_trace_file(self, m):
                 typeofmeasure = self._instanceconfiguration.get("typeofmeasure").strip()
