@@ -1,11 +1,15 @@
 #!/usr/bin/python
 """Plot MECPerf RTT/bandwidth timeseries"""
 
-import matplotlib.pyplot as plt
 import argparse
+import sys
+import pprint
 from configparser import ConfigParser
 
-from network_trace_manager import NetworkTraceManager
+import matplotlib.pyplot as plt
+import numpy as np
+
+from network_trace_manager import NetworkTraceManager, InvalidConfiguration
 
 parser = argparse.ArgumentParser(
     description='Plot MECPerf RTT/bandwidth timeseries',
@@ -31,6 +35,12 @@ parser.add_argument("--mapping_file", default='inputFiles/mapping.json',
                     help="JSON mapping file")
 parser.add_argument("--metric", default='RTT',
                     help="Metric, one of { RTT, bandwidth }")
+parser.add_argument("--histo_values", action='store_true', default=False,
+                    help="Print a histogram of the values rather than the time series")
+parser.add_argument("--histo_time", action='store_true', default=False,
+                    help="Print a histogram of the time interval between two consecutive samples rather than the time series")
+parser.add_argument("--ylog", action='store_true', default=False,
+                    help="Use logarithmic scale for the y-axis")
 args = parser.parse_args()
 
 config = ConfigParser()
@@ -50,18 +60,49 @@ config['myconf']['second-endpointity'] = args.receiver
 config['myconf']['direction'] = args.direction
 config['myconf']['trace'] = 'True'
 
-trace = NetworkTraceManager(config['myconf'])
+try:
+    trace = NetworkTraceManager(config['myconf'])
 
-assert args.metric in ['RTT', 'bandwidth']
+    assert args.metric in ['RTT', 'bandwidth']
 
-timeseries = trace.get_rtt_timeseries() if args.metric == 'RTT' else trace.get_bandwidth_timeseries()
+    timeseries = trace.get_rtt_timeseries() \
+        if args.metric == 'RTT' \
+            else trace.get_bandwidth_timeseries()
 
-plt.plot(timeseries[0], timeseries[1], '.')
-plt.xlabel('Time (seconds)')
-plt.ylabel(args.metric)
-plt.axes([
-    min(timeseries[0]),
-    max(timeseries[0]),
-    min(timeseries[1]),
-    max(timeseries[1])])
-plt.show()
+    if args.histo_values:
+        plt.xlabel('Time (seconds)')
+        plt.ylabel('Count')
+        plt.hist(timeseries[1], bins=100)
+
+    elif args.histo_time:
+        plt.xlabel('Time interval between samples (seconds)')
+        plt.ylabel('Count')
+        deltas = []
+        last = None
+        for t in timeseries[0]:
+            if last is None:
+                last = t
+            else:
+                deltas.append(t - last)
+                last = t
+        plt.hist(deltas, bins=100)
+
+    else:
+        plt.xlabel('Time (seconds)')
+        plt.ylabel(args.metric)
+        plt.plot(timeseries[0], timeseries[1], '.')
+        plt.axes([
+            min(timeseries[0]),
+            max(timeseries[0]),
+            min(timeseries[1]),
+            max(timeseries[1])])
+
+    if args.ylog:
+        plt.yscale('log')
+
+    plt.show()
+    
+
+except InvalidConfiguration:
+    sys.stderr.write('Invalid configuration:\n\n{}\n\nPlease check command-line arguments\n'.format(
+        pprint.pformat(dict(config['myconf']))))
