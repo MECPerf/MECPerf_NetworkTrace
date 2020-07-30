@@ -140,6 +140,9 @@ class NetworkTraceManager:
                 random.seed(self._instanceconfiguration.getint("seed"))
 
                 self._get_traces()
+                
+                self._throw_if_invalid()
+
                 self._rtt_timestamp = self._rtt_trace[0]["timestamp"]
                 self._bandwidth_timestamp = self._bandwidth_trace[0]["timestamp"]
 
