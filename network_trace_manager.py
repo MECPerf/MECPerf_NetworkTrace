@@ -46,7 +46,7 @@ class NetworkTraceManager:
 
                                         curr_command = elem[key]    
                                 if key == "direction":
-                                        if direction != None and direction != elem[key]:
+                                        if direction != None and elem[key] != None and direction != elem[key]:
                                                 discard_elem = True
                                                 continue
                                                 
@@ -132,24 +132,29 @@ class NetworkTraceManager:
                 self._bandwidth_index = 0    
                 self._bandwidth_timestamp = None            
                 self._instanceconfiguration = config
+                self._tracerandomgenerator = None
+                self._startingitemrandomgenerator = None
 
                 self._check__instanceconfiguration()
                 self.print_instanceconfiguration()
                 
                 #initialize the random generator
-                random.seed(self._instanceconfiguration.getint("seed"))
+                random.seed(self._instanceconfiguration.getint("traceseed"))
+                self._tracerandomgenerator = random.getstate()
+                random.seed(self._instanceconfiguration.getint("startingitemseed"))
+                self._startingitemrandomgenerator = random.getstate()
 
                 self._get_traces()
                 
                 self._throw_if_invalid()
 
                 self._rtt_timestamp = self._rtt_trace[0]["timestamp"]
-                self._bandwidth_timestamp = self._bandwidth_trace[0]["timestamp"]
+                #self._bandwidth_timestamp = self._bandwidth_trace[0]["timestamp"]
 
                 logging.info("rtt: " + str(self._rtt_trace))
                 logging.info("_rtt_timestamp: " + str(self._rtt_timestamp))
-                logging.info("bandwidth: " + str(self._bandwidth_trace))
-                logging.info("_bandwidth_timestamp: " + str(self._bandwidth_timestamp))
+                #logging.info("bandwidth: " + str(self._bandwidth_trace))
+                #logging.info("_bandwidth_timestamp: " + str(self._bandwidth_timestamp))
 
         def _throw_if_invalid(self):
                 """Throw an exception if the current status is not OK"""
@@ -304,8 +309,8 @@ class NetworkTraceManager:
                 return rtt, bandwidth
 
         def _check__instanceconfiguration(self):
-                if self._instanceconfiguration.getint("seed") == None:
-                        logging.error("Error: seed is missing")
+                if self._instanceconfiguration.getint("traceseed") == None:
+                        logging.error("Error: traceseed is missing")
                         self._status = self.__WRONG_CONFIGURATION
                         return
 
@@ -320,12 +325,10 @@ class NetworkTraceManager:
                            self._instanceconfiguration.get("cross-traffic") == None or \
                            self._instanceconfiguration.get("access-technology") == None or \
                            self._instanceconfiguration.get("sender-identity") == None or \
-                           self._instanceconfiguration.get("receiver-identity") == None or \
-                           self._instanceconfiguration.get("trace") == None:
+                           self._instanceconfiguration.get("receiver-identity") == None:
                                 logging.error("Error: Wrong configuration")
                                 self._status = self.__WRONG_CONFIGURATION
                                 return
-
         def print_instanceconfiguration(self):
                 self._throw_if_invalid()
                 
@@ -364,27 +367,43 @@ class NetworkTraceManager:
                 logging.info(f'RTT tracefile:       {rtt_tracefile}')
                 logging.info(f'Bandwidth tracefile: {bandwidth_tracefile}')
 
-                if rtt_tracefile == None or bandwidth_tracefile == None:
+                if rtt_tracefile == None :#or bandwidth_tracefile == None:
                         self._status = self.__WRONG_INPUTFILEPATH
                         return
 
-                starting_time = NetworkTraceManager._swallow_trace(
+                starting_time = self._swallow_trace(
                         rtt_tracefile,
                         self._rtt_trace,
                         'rtt',
                         None)
                 assert starting_time is not None
-                NetworkTraceManager._swallow_trace(
-                        bandwidth_tracefile,
-                        self._bandwidth_trace,
-                        'bandwidth',
-                        starting_time)
+                #NetworkTraceManager._swallow_trace(
+                #        bandwidth_tracefile,
+                #        self._bandwidth_trace,
+                #        'bandwidth',
+                #        starting_time)
 
                 self._compact_trace(self._rtt_trace)
-                self._compact_trace(self._bandwidth_trace)
+                #self._compact_trace(self._bandwidth_trace)
 
-        @staticmethod
-        def _swallow_trace(trace_filename, trace_out, trace_type, starting_time):
+
+        def _getrandomintegers(self, randomgenerator, fromvalue, tovalue):
+                assert randomgenerator in ["trace", "starting_item"]
+
+                if randomgenerator == "trace":
+                        random.setstate(self._tracerandomgenerator)
+                        randomvalue = random.randint(fromvalue, tovalue)
+                        self._tracerandomgenerator = random.getstate()
+                        return randomvalue
+        
+                if randomgenerator == "starting_item":
+                        random.setstate(self._startingitemrandomgenerator)
+                        randomvalue = random.randint(fromvalue, tovalue)
+                        self._startingitemrandomgenerator = random.getstate()
+                        return randomvalue
+
+        #@staticmethod
+        def _swallow_trace(self, trace_filename, trace_out, trace_type, starting_time):
                 assert trace_type in ['rtt', 'bandwidth']
                 assert len(trace_out) == 0
 
@@ -415,7 +434,7 @@ class NetworkTraceManager:
                                                 starting_item = i - 1 if i > 0 else 0
                                                 break
                         else:
-                                starting_item = random.randint(1, len(data_list) - 1)
+                                starting_item =  self._getrandomintegers("starting_item", 1, len(data_list) - 1)
 
                         # insert all elements from the starting one onward
                         #
@@ -525,13 +544,18 @@ class NetworkTraceManager:
                                        
      
                         if path != None:
-                                logging.info("trace_file:\t" + path)
-                                return path
-
+                                logging.info("Select a random trace")
+                                
+                                
+                                random_index=self._getrandomintegers("trace", 0, len(path)-1)
+                                print (random_index)
+                                filepath = path[random_index]
+                                logging.info("trace_file:\t" + filepath + " with index " + str(random_index))
+                                return filepath
                 return None
 
 
-        def _compute_randomtimes(self, tracefile):
+        '''def _compute_randomtimes(self, tracefile):
                 #t_start & t_end are selected randomly
                 with open(tracefile, "r") as input_tracefile:
                         data_list = input_tracefile.readline().split(",")  
@@ -555,3 +579,4 @@ class NetworkTraceManager:
                         logging.info ("t_end: " + str(random_tend) + "\t\t(randomly generated)")
                         
                         return random_tstart, random_tend
+        '''

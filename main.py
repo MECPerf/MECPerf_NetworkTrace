@@ -13,19 +13,19 @@ logging.basicConfig(filename="file.log", filemode='w',
 config = configparser.ConfigParser()
 config.read("conf.ini")
 
-'''
-for elem in NetworkTraceManager.get_tracelist(command="TCPBandwidth", direction="upstream", typeofmeasure="active"):
+
+for elem in NetworkTraceManager.get_tracelist("inputFiles/mapping.json", command="TCPRTT", direction="upstream", typeofmeasure="active"):
     print (elem)
-'''
+
 
 
 network_trace1 = NetworkTraceManager(config["conf1"])
 network_trace2 = NetworkTraceManager(config["conf2"])
 
 print(network_trace1.get_rtt(1))
-print(network_trace1.get_rtt(3))
-print(network_trace1.get_rtt(2))
-print(network_trace1.get_rtt(4))
+print(network_trace1.get_rtt(3.1))
+print(network_trace1.get_rtt(2.3))
+print(network_trace1.get_rtt(4.2))
 print("\n")
     
 
@@ -35,7 +35,7 @@ print(network_trace2.get_rtt(8))
 print(network_trace2.get_rtt(2))
 print("\n")
 
-print(network_trace1.get_bandwidth(1))
+'''print(network_trace1.get_bandwidth(1))
 print(network_trace1.get_bandwidth(2))
 print(network_trace1.get_bandwidth(3))
 print(network_trace1.get_bandwidth(4))
@@ -57,3 +57,4 @@ print("\n")
 for i in range(0,4):
     rtt, bandwidth = network_trace2.get_networkvalues(1)
     print(str(rtt) + ", " + str(bandwidth))
+'''
