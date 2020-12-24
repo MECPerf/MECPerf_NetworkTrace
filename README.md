@@ -3,7 +3,7 @@
 
 
 ## Input files
-The repository contains a set of input files. Each of them is a text file that contains the list of comma-separated measurements contained within a trace. To use these traces, unzip the [input files](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/blob/master/inputFiles/active.tar.xz)  into the MECPerf_NetworkTrace/inputFiles folder.
+The repository contains a set of input files. Each of them is a text file that contains the list of comma-separated measurements contained within a trace. To use these traces, unzip the [active.tar.xz](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/blob/master/inputFiles/active.tar.xz)  into the MECPerf_NetworkTrace/inputFiles folder.
 
 Each trace is associated with the setup used to collect the trace. The setup includes the type of measures, the protocol, the segment measured, the identity of the hosts involved in the measurements,  
 the direction of communication, the access technology used to connect the client, and the amount of cross-traffic injected into the access network. The mapping between each input trace and the corresponding setup is contained in a [JSON file](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/tree/master/inputFiles/mapping.json).
