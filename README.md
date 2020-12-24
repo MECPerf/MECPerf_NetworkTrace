@@ -21,7 +21,7 @@ It receives as input a configuration consisting of:
 - two seed (*traceseed*, *startingitemseed*) used to initialized two pseudorandom number generator. The first Pseudorandom number generator is used to choose a random trace among the selected ones, while the second is used to select a random starting point within the trace.
 - a key (*max_tracegap_seconds*) used to optimize traces so that two consecutive measures differ by *max_tracegap_seconds* at most.
 
-An example of an ini file can be found [here](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/blob/master/conf.ini).
+An example of an ini file can be found [here](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/blob/master/conf.ini) and an example of usage can be found [here](https://github.com/ChiaraCaiazza/MECPerf_NetworkTrace/main.py)
 
 ```python
 get_rtt(sec)
