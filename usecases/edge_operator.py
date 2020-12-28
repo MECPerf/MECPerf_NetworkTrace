@@ -4,6 +4,7 @@ import argparse
 import configparser
 import logging
 import random
+import os
 
 from network_trace_manager import NetworkTraceManager
 
@@ -62,8 +63,10 @@ class UserTerminal:
 class Network:
     """Model a telco operator network with edge compute resources."""
 
-    def __init__(self, identifier: int):
+    def __init__(self, identifier: int, percentile: float):
         self.identifer = identifier
+        self.percentile = percentile
+
         self._users = []
         self._rtts = {}
 
@@ -97,30 +100,47 @@ class Network:
         return [ut.identifier for ut in self._users]
 
     def migrate(self):
-        """Return the list of `UserTerminal` to migrate."""
+        """Return the list of the identifiers of UTs to migrate."""
 
+        leavers = round(len(self._rtts) * self.percentile / 100.0)
+        remainers = len(self._rtts) - leavers
+        sorted_rtts = sorted(self._rtts.items(), key=lambda item: item[1])
         ret = []
+        for identifier in range(remainers, len(self._rtts)):
+            ret.append(sorted_rtts[identifier][0])
         return ret
 
 
 class Simulator:
     """Flow-level simulator with two networks and multiple users."""
 
-    def __init__(self, seed: int, num_users: int, on_time: float, off_time: float):
-        logger.info(
-            f"simulation seed {seed} num users {num_users} ON/OFF times {on_time}/{off_time}")
+    def __init__(self, seed: int, num_users: int, percentile: float,
+                 on_time: float, off_time: float, stat_path: str):
+        logger.info((
+            f"simulation seed {seed} num users {num_users} "
+            f"ON/OFF times {on_time}/{off_time} "
+            f"migration percentile {percentile}"))
         self.time_slot = 0
         self.num_users = num_users
         self.on_time = on_time
         self.off_time = off_time
         self.rng = random.Random(seed)
+        self.stat_path = stat_path
+        self.mangle = f'percentile={percentile}.seed={seed}'
+
+        # check filesystem before running simulations
+        if os.path.exists(stat_path) and not os.path.isdir(stat_path):
+            raise RuntimeError(f'Output path exists but it is not a directory')
+        if not os.path.exists(stat_path):
+            os.makedirs(stat_path)
 
         # statistics
         self.rtts = []
         self.migrations = 0
 
+        # initialize internal member variables
         self.users = []
-        self.networks = [Network(0), Network(1)]
+        self.networks = [Network(0, percentile), Network(1, percentile)]
         init_active_prob = on_time / (on_time + off_time)
         for user in range(num_users):
             self.users.append((None, None))
@@ -144,17 +164,27 @@ class Simulator:
         # migrate the users between the two networks
         from0 = self.networks[0].migrate()
         from1 = self.networks[1].migrate()
+        logger.debug(f"#{self.time_slot} migrating from OP0 to OP1: {from0}")
+        logger.debug(f"#{self.time_slot} migrating from OP1 to OP0: {from1}")
         self.migrations += len(from0) + len(from1)
-        for ut in from0:
+        for identifier in from0:
+            ut = self.users[identifier][0]
+            assert ut is not None
+            self.networks[0].dissociate(ut)
             self.networks[1].associate(ut)
-        for ut in from1:
+        for identifier in from1:
+            ut = self.users[identifier][0]
+            assert ut is not None
             self.networks[0].associate(ut)
+            self.networks[1].dissociate(ut)
 
         # activate/deactivate users
         for user in range(self.num_users):
-            if self.users[user][0] is None and self.users[user][1] < self.time_slot:
+            if self.users[user][0] is None and \
+                    self.users[user][1] < self.time_slot:
                 self._new_user(user)
-            elif self.users[user][0] is not None and self.users[user][1] < self.time_slot:
+            elif self.users[user][0] is not None and \
+                    self.users[user][1] < self.time_slot:
                 self._del_user(user)
 
         # advance time
@@ -170,8 +200,9 @@ class Simulator:
         if self.rng.random() >= 0.5:
             network = 1
         self.networks[network].associate(ut)
-        logger.debug(
-            f"#{self.time_slot} activating user {identifier} on OP{network} until {on_time}")
+        logger.debug((
+            f"#{self.time_slot} activating user {identifier} "
+            f"on OP{network} until {on_time}"))
 
     def _del_user(self, identifier: int):
         """Delete the given user."""
@@ -182,6 +213,18 @@ class Simulator:
         self.users[identifier] = (None, off_time)
         logger.debug(
             f"#{self.time_slot} deactivating user {identifier} until {off_time}")
+
+    def save(self):
+        """Save the statistics to output files."""
+
+        assert os.path.isdir(self.stat_path)
+
+        with open(f'{self.stat_path}/migrations.{self.mangle}.dat', 'w') as outfile:
+            outfile.write(f'{self.migrations}\n')
+
+        with open(f'{self.stat_path}/rtts.{self.mangle}.dat', 'w') as outfile:
+            for rtt in self.rtts:
+                outfile.write(f'{rtt}\n')
 
 
 def printRtt(num_seeds: int):
@@ -215,7 +258,7 @@ def printRtt(num_seeds: int):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARN)
     logger = logging.getLogger("edge_operator")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
 
     parser = argparse.ArgumentParser(
         description='Simple flow-level simulation with NetworkTraceManager',
@@ -231,17 +274,19 @@ if __name__ == "__main__":
                         help="Average OFF time, in slots")
     parser.add_argument("--duration", type=int, default=10,
                         help="Simulation duration, in slots")
+    parser.add_argument("--stat_path", type=str, default="outdir",
+                        help="Directory where to save statistics")
 
     args = parser.parse_args()
 
     if args.test > 0:
         printRtt(args.test)
 
-    num_users = 10
+    num_users = 100
     for drop in range(args.num_drops):
-        sim = Simulator(drop, num_users, args.on_time, args.off_time)
-        for slot in range(args.duration):
-            sim.next_slot()
-        migration_rate = sim.migrations / (2 * args.duration)
-        logger.debug(f"migration-rate {migration_rate}")
-        logger.debug(f"RTTs {sim.rtts}")
+        for percentile in [0, 10, 20]:
+            sim = Simulator(drop, num_users, percentile,
+                            args.on_time, args.off_time, args.stat_path)
+            for slot in range(args.duration):
+                sim.next_slot()
+            sim.save()
