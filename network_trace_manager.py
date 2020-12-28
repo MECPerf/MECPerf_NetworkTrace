@@ -545,10 +545,7 @@ class NetworkTraceManager:
      
                         if path != None:
                                 logging.info("Select a random trace")
-                                
-                                
                                 random_index=self._getrandomintegers("trace", 0, len(path)-1)
-                                print (random_index)
                                 filepath = path[random_index]
                                 logging.info("trace_file:\t" + filepath + " with index " + str(random_index))
                                 return filepath
