@@ -11,6 +11,7 @@ import numpy as np
 
 from network_trace_manager import NetworkTraceManager, InvalidConfiguration
 
+
 def compute_deltas(time_values):
     deltas = []
     last = None
@@ -21,6 +22,7 @@ def compute_deltas(time_values):
             deltas.append(t - last)
             last = t
     return deltas
+
 
 def save(timeseries, filename, data_type):
     assert data_type in ['timeseries', 'histo_values', 'histo_time']
@@ -43,6 +45,7 @@ def save(timeseries, filename, data_type):
             for x, y in zip(res[0], res[1]):
                 if x > 0:
                     outfile.write(f'{y} {x}\n')
+
 
 def plot(timeseries, data_type):
     assert data_type in ['timeseries', 'histo_values', 'histo_time']
@@ -73,6 +76,7 @@ def plot(timeseries, data_type):
         plt.yscale('log')
 
     plt.show()
+
 
 parser = argparse.ArgumentParser(
     description='Plot MECPerf RTT/bandwidth timeseries',
@@ -111,8 +115,9 @@ args = parser.parse_args()
 config = ConfigParser()
 config['myconf'] = {}
 config['myconf']['mapping_file'] = args.mapping_file
-config['myconf']['max_tracegap_seconds'] = str(365 * 86400) # 1 year
-config['myconf']['seed'] = str(0)
+config['myconf']['max_tracegap_seconds'] = str(365 * 86400)  # 1 year
+config['myconf']['traceseed'] = str(0)
+config['myconf']['startingitemseed'] = str(0)
 config['myconf']['typeofmeasure'] = args.typeofmeasure
 config['myconf']['protocol'] = args.protocol
 config['myconf']['observerPos'] = args.observer_location
@@ -121,14 +126,15 @@ config['myconf']['access-technology'] = args.access_technology
 config['myconf']['sender-identity'] = args.sender
 config['myconf']['receiver-identity'] = args.receiver
 config['myconf']['first-endpoint'] = args.sender
-config['myconf']['second-endpointity'] = args.receiver
+config['myconf']['second-endpoint'] = args.receiver
 config['myconf']['direction'] = args.direction
 config['myconf']['trace'] = 'True'
 
 data_type = 'timeseries'
 if args.histo_values:
     if args.histo_time:
-        sys.stderr.write('Can only specify one of --histo_time and --histo_values\n')
+        sys.stderr.write(
+            'Can only specify one of --histo_time and --histo_values\n')
         sys.exit(1)
     data_type = 'histo_values'
 elif args.histo_time:
@@ -142,7 +148,7 @@ try:
     timeseries = trace.get_rtt_timeseries() \
         if args.metric == 'RTT' \
         else trace.get_bandwidth_timeseries()
-    
+
     if args.save:
         save(timeseries, args.save, data_type)
     else:
