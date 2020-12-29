@@ -284,7 +284,7 @@ if __name__ == "__main__":
 
     num_users = 100
     for drop in range(args.num_drops):
-        for percentile in [0, 10, 20]:
+        for percentile in [0, 10, 20, 30, 40, 50, 60, 70, 80]:
             sim = Simulator(drop, num_users, percentile,
                             args.on_time, args.off_time, args.stat_path)
             for slot in range(args.duration):
