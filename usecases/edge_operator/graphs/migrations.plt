@@ -60,7 +60,7 @@ set style histogram clustered gap 2 title textcolor lt -1
 unset object
 set style textbox transparent margins  1.0,  1.0 border  lt -1 linewidth  1.0
 set offsets 0, 0, 0, 0
-set pointsize 1
+set pointsize 2
 set pointintervalbox 1
 set encoding default
 unset polar
@@ -123,13 +123,13 @@ set timestamp  font "" norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Fraction of users migrated per time slot" 
+set xlabel "Fraction of users migrated per time slot ({/Symbol g})" 
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
 set xrange [ 0 : 0.5 ] noreverse nowriteback
 set x2range [ * : * ] noreverse nowriteback
-set ylabel "Migration rate (1/s)" 
+set ylabel "Migration rate (time slot^{-1})" 
 set ylabel  font "" textcolor lt -1 rotate
 set y2label "" 
 set y2label  font "" textcolor lt -1 rotate

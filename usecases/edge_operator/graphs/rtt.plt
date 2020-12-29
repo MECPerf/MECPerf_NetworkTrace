@@ -60,7 +60,7 @@ set style histogram clustered gap 2 title textcolor lt -1
 unset object
 set style textbox transparent margins  1.0,  1.0 border  lt -1 linewidth  1.0
 set offsets 0, 0, 0, 0
-set pointsize 1
+set pointsize 2
 set pointintervalbox 1
 set encoding default
 unset polar
@@ -123,7 +123,7 @@ set timestamp  font "" norotate
 set trange [ * : * ] noreverse nowriteback
 set urange [ * : * ] noreverse nowriteback
 set vrange [ * : * ] noreverse nowriteback
-set xlabel "Fraction of users migrated per time slot" 
+set xlabel "Fraction of users migrated per time slot ({/Symbol g})" 
 set xlabel  font "" textcolor lt -1 norotate
 set x2label "" 
 set x2label  font "" textcolor lt -1 norotate
@@ -167,5 +167,5 @@ set psdir
 set fit brief errorvariables nocovariancevariables errorscaling prescale nowrap v5
 GNUTERM = "wxt"
 ## Last datafile plotted: "../data/rtts.0.95.dat"
-plot '../data/rtts.0.5.dat' u ($1/100):2:3:4 w ye lt 1 pt 5 title "0.5 quantile", '' u ($1/100):2 w l lt 1 notitle,      '../data/rtts.0.75.dat' u ($1/100):2:3:4 w ye lt 1 pt 7 title "0.75 quantile", '' u ($1/100):2 w l lt 1 notitle,      '../data/rtts.0.95.dat' u ($1/100):2:3:4 w ye lt 1 pt 9 title "0.95 quantile", '' u ($1/100):2 w l lt 1 notitle
+plot '../data/rtts.0.5.dat' u ($1/100):2:3:4 w ye lt 1 pt 1 title "0.5 quantile", '' u ($1/100):2 w l lt 1 notitle,      '../data/rtts.0.75.dat' u ($1/100):2:3:4 w ye lt 2 pt 2 title "0.75 quantile", '' u ($1/100):2 w l lt 2 notitle,      '../data/rtts.0.95.dat' u ($1/100):2:3:4 w ye lt 3 pt 3 title "0.95 quantile", '' u ($1/100):2 w l lt 3 notitle
 #    EOF
